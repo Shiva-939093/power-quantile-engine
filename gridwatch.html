@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GridWatch — Energy Grid Optimization Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #05070a;
+    --panel: #0b0f14;
+    --panel2: #10151c;
+    --border: #1c242e;
+    --line: #26303c;
+    --cyan: #4fd6e8;
+    --amber: #f0a94e;
+    --rose: #f2506b;
+    --emerald: #3ed598;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --muted2: #94a3b8;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(79,214,232,0.05), transparent 40%),
+      radial-gradient(circle at 100% 100%, rgba(240,169,78,0.04), transparent 40%);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+  a, button { font-family: inherit; }
+  ::selection { background: rgba(79,214,232,0.3); }
+  :focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(11,15,20,0.7);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .header-inner {
+    max-width: 1180px; margin: 0 auto;
+    padding: 12px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .brand-icon {
+    width: 32px; height: 32px; border-radius: 6px;
+    background: rgba(79,214,232,0.1); border: 1px solid rgba(79,214,232,0.3);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    color: var(--cyan);
+  }
+  .brand h1 { font-size: 14px; font-weight: 600; margin: 0; color: #f1f5f9; letter-spacing: -0.01em; }
+  .brand h1 span { color: var(--muted); font-weight: 400; }
+  .brand p { margin: 2px 0 0; font-size: 11px; color: var(--muted); }
+
+  .status-pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 10px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--panel2);
+    font-size: 12px; color: var(--muted2);
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--emerald); }
+  .status-dot.pulse { animation: pulseSlow 2.4s ease-in-out infinite; }
+
+  main { max-width: 1180px; margin: 0 auto; padding: 24px 20px; display: flex; flex-direction: column; gap: 20px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 8px 24px -8px rgba(0,0,0,0.6); }
+  .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 8px; }
+  .panel-header h2 { font-size: 13px; font-weight: 600; margin: 0; color: #f1f5f9; }
+  .panel-header p { font-size: 11px; color: var(--muted); margin: 2px 0 0; }
+  .eyebrow { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+
+  .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  @media (min-width: 900px) { .metric-grid { grid-template-columns: repeat(4, 1fr); } }
+  .metric-card { padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .metric-top { display: flex; align-items: center; justify-content: space-between; }
+  .metric-value { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+  .metric-value .num { font-size: 26px; font-weight: 600; color: #f8fafc; }
+  .metric-value .unit { font-size: 12px; color: var(--muted); }
+  .bar-track { height: 6px; width: 100%; border-radius: 999px; background: var(--line); overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 999px; transition: width 0.7s ease-out; }
+
+  .cyan { color: var(--cyan); } .amber { color: var(--amber); } .rose { color: var(--rose); } .emerald { color: var(--emerald); }
+  .bg-cyan { background: var(--cyan); } .bg-amber { background: var(--amber); } .bg-rose { background: var(--rose); } .bg-emerald { background: var(--emerald); }
+
+  .alert-banner {
+    display: none;
+    border: 1px solid rgba(242,80,107,0.4);
+    background: rgba(242,80,107,0.08);
+    border-radius: 8px; padding: 12px 16px;
+    align-items: flex-start; gap: 12px;
+    animation: pulseSlow 2.4s ease-in-out infinite;
+  }
+  .alert-banner.active { display: flex; }
+  .alert-banner .msg { flex: 1; min-width: 0; }
+  .alert-banner .msg p { margin: 3px 0 0; font-size: 13px; color: var(--text); }
+  .alert-tag { font-size: 11px; font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 0.1em; color: var(--rose); font-weight: 600; }
+  .alert-time { font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: var(--muted); margin-left: 8px; }
+
+  .chart-wrap { padding: 16px; height: 340px; }
+  svg text { font-family: 'IBM Plex Mono', monospace; fill: var(--muted); font-size: 10px; }
+
+  .lower-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  @media (min-width: 1024px) { .lower-grid { grid-template-columns: 2fr 3fr; } }
+
+  .log-list { max-height: 380px; overflow-y: auto; }
+  .log-row { padding: 12px 16px; display: flex; align-items: flex-start; gap: 10px; border-bottom: 1px solid var(--border); }
+  .log-row:last-child { border-bottom: none; }
+  .log-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+  .log-row .meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .log-sev { font-size: 11px; font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted2); }
+  .log-time { font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: var(--muted); }
+  .log-desc { font-size: 13px; color: #cbd5e1; margin: 3px 0 0; }
+  .empty-state { padding: 28px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { position: sticky; top: 0; background: var(--panel); text-align: left; padding: 8px 16px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 500; }
+  thead th.num { text-align: right; }
+  tbody td { padding: 7px 16px; border-bottom: 1px solid rgba(28,36,46,0.6); font-family: 'IBM Plex Mono', monospace; }
+  tbody td.num { text-align: right; }
+  tbody tr:hover { background: rgba(16,21,28,0.6); }
+  .table-scroll { max-height: 380px; overflow-y: auto; }
+
+  .legend { display: flex; align-items: center; gap: 16px; font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: var(--muted); }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .swatch-line { width: 10px; height: 2px; display: inline-block; }
+  .swatch-box { width: 10px; height: 10px; display: inline-block; border-radius: 2px; }
+
+  footer { text-align: center; padding: 24px 20px; font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: #475569; }
+
+  @keyframes pulseSlow { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.001ms !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 16.1C1 12.2 1 5.8 4.9 1.9"/><path d="M7.8 4.7a6.14 6.14 0 0 0-.8 7.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 4.7a6.14 6.14 0 0 1 .8 7.5"/><path d="M19.1 1.9a10 10 0 0 1 0 14.2"/></svg>
+      </div>
+      <div>
+        <h1>GridWatch <span>/ Regional Load Control</span></h1>
+        <p>Time-Series Energy Grid Optimization &amp; Predictive Analytics Platform</p>
+      </div>
+    </div>
+    <div class="status-pill">
+      <span class="status-dot pulse"></span>
+      <span>Live</span>
+      <span id="lastUpdated" class="mono" style="color:#475569;"></span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <div id="alertBanner" class="alert-banner panel">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="rose" style="flex-shrink:0;margin-top:2px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <div class="msg">
+      <span class="alert-tag">Critical Fault</span><span id="alertTime" class="alert-time"></span>
+      <p id="alertText"></p>
+    </div>
+  </div>
+
+  <section class="metric-grid">
+    <div class="panel metric-card">
+      <div class="metric-top"><span class="eyebrow">Grid Load</span><span class="cyan">⚡</span></div>
+      <div class="metric-value"><span id="mLoad" class="num mono">—</span><span class="unit mono">MW</span></div>
+      <div class="bar-track"><div id="mLoadBar" class="bar-fill bg-cyan" style="width:0%"></div></div>
+    </div>
+    <div class="panel metric-card">
+      <div class="metric-top"><span class="eyebrow">Ambient Temp</span><span class="amber">🌡</span></div>
+      <div class="metric-value"><span id="mTemp" class="num mono">—</span><span class="unit mono">°C</span></div>
+    </div>
+    <div class="panel metric-card">
+      <div class="metric-top"><span class="eyebrow">Grid Health Index</span><span id="mHealthIcon" class="emerald">✓</span></div>
+      <div class="metric-value"><span id="mHealth" class="num mono">—</span><span class="unit mono">/ 100</span></div>
+      <div class="bar-track"><div id="mHealthBar" class="bar-fill bg-emerald" style="width:0%"></div></div>
+    </div>
+    <div class="panel metric-card">
+      <div class="metric-top"><span class="eyebrow">Active Alerts</span><span id="mAlertIcon" class="emerald">●</span></div>
+      <div class="metric-value"><span id="mAlerts" class="num mono">0</span><span id="mAlertsUnit" class="unit mono">nominal</span></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div>
+        <h2>48-Hour Load Forecast</h2>
+        <p>P10–P90 uncertainty band · median (P50) projection · last 24h actuals shown for continuity</p>
+      </div>
+      <div class="legend">
+        <span><span class="swatch-line bg-amber"></span> Actual</span>
+        <span><span class="swatch-line bg-cyan"></span> P50</span>
+        <span><span class="swatch-box" style="background:rgba(79,214,232,0.2);border:1px solid rgba(79,214,232,0.4);"></span> P10–P90</span>
+      </div>
+    </div>
+    <div class="chart-wrap"><svg id="chart" width="100%" height="100%" viewBox="0 0 1000 300" preserveAspectRatio="none"></svg></div>
+  </section>
+
+  <section class="lower-grid">
+    <div class="panel">
+      <div class="panel-header"><h2>Anomaly Log</h2><span id="logCount" class="eyebrow">0 recent</span></div>
+      <div id="logList" class="log-list"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><h2>Forecast Timeline</h2><span class="eyebrow">Next 48h</span></div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Hour</th><th class="num">P10</th><th class="num">P50</th><th class="num">P90</th></tr></thead>
+          <tbody id="forecastTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>GridWatch — synthetic telemetry, simulation-driven quantile forecasting. Not connected to a live utility.</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------------
+  // Synthetic data engine — mirrors the same trend/diurnal/weekly/seasonal
+  // model as the backend, but runs entirely client-side so this page needs
+  // no server at all.
+  // ---------------------------------------------------------------------
+
+  const HOURS_HISTORY = 24 * 14; // 14 days of hourly history kept in memory
+  const HORIZON_HOURS = 48;
+  const BASE_LOAD_MW = 4200;
+
+  function seededRandom(seed) {
+    let s = seed % 2147483647;
+    if (s <= 0) s += 2147483646;
+    return function () {
+      s = (s * 16807) % 2147483647;
+      return (s - 1) / 2147483646;
+    };
+  }
+  const rng = seededRandom(42);
+  function gauss(mean, std) {
+    const u1 = Math.max(rng(), 1e-9), u2 = rng();
+    const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    return mean + z * std;
+  }
+
+  function loadAt(date, noise) {
+    const hour = date.getHours();
+    const day = date.getDay(); // 0=Sun..6=Sat
+    const dayOfYear = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 86400000);
+
+    const diurnal = 420 * Math.cos(2 * Math.PI * (hour - 19) / 24) + 180 * Math.cos(2 * 2 * Math.PI * (hour - 19) / 24);
+    const isWeekend = day === 0 || day === 6;
+    const weekly = isWeekend ? -260 : 40;
+    const temp = 14 - 14 * Math.cos(2 * Math.PI * (dayOfYear - 200) / 365.25);
+    const coolingExcess = Math.max(temp - 24, 0);
+    const heatingExcess = Math.max(2 - temp, 0);
+    const seasonal = Math.pow(coolingExcess, 1.6) * 14 + heatingExcess * 9;
+
+    const value = BASE_LOAD_MW + diurnal + weekly + seasonal + (noise ? gauss(0, 55) : 0);
+    return { load: Math.max(value, 50), temp };
+  }
+
+  function humidityCloudGhi(date, temp) {
+    const hour = date.getHours();
+    const dayOfYear = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 86400000);
+    const cloud = Math.min(Math.max(45 + 25 * Math.sin(2 * Math.PI * dayOfYear / 40) + gauss(0, 15), 0), 100);
+    const humidity = Math.min(Math.max(60 - 0.6 * (temp - 14) + 0.15 * cloud + gauss(0, 6), 5), 100);
+    return { humidity, cloud };
+  }
+
+  // Build trailing history (most recent last), with a few flagged anomalies
+  // seeded deterministically so the log has believable, stable content.
+  const now = new Date();
+  now.setMinutes(0, 0, 0);
+  const history = [];
+  for (let i = HOURS_HISTORY - 1; i >= 0; i--) {
+    const ts = new Date(now.getTime() - i * 3600000);
+    const { load, temp } = loadAt(ts, true);
+    const { humidity } = humidityCloudGhi(ts, temp);
+    history.push({ timestamp: ts, consumption_mw: load, temperature_c: temp, humidity_pct: humidity, grid_health_index: 100 });
+  }
+
+  // Rolling-median-based health index + anomaly injection on a handful of
+  // recent hours so the dashboard has something to show without waiting.
+  const ANOMALY_OFFSETS = [
+    { hoursAgo: 6, type: "LOAD_SURGE", severity: "CRITICAL", multiplier: 4.1 },
+    { hoursAgo: 30, type: "LOAD_DROP", severity: "CRITICAL", multiplier: 0.05 },
+    { hoursAgo: 55, type: "LOAD_SURGE", severity: "MEDIUM", multiplier: 1.8 },
+    { hoursAgo: 96, type: "LOAD_DROP", severity: "LOW", multiplier: 0.6 },
+  ];
+  const anomalies = [];
+  ANOMALY_OFFSETS.forEach((a) => {
+    const idx = history.length - 1 - a.hoursAgo;
+    if (idx < 0) return;
+    const baseline = history[idx].consumption_mw;
+    const triggered = baseline * a.multiplier;
+    history[idx].consumption_mw = triggered;
+    history[idx].grid_health_index = a.severity === "CRITICAL" ? 12 : a.severity === "MEDIUM" ? 45 : 78;
+    anomalies.push({
+      alert_id: "a-" + a.hoursAgo,
+      timestamp: history[idx].timestamp,
+      severity: a.severity,
+      trigger_value_mw: triggered,
+      expected_value_mw: baseline,
+      description: (a.type === "LOAD_SURGE"
+        ? `Power surge detected: load spiked to ${triggered.toFixed(1)} MW (${a.multiplier.toFixed(1)}x expected ${baseline.toFixed(1)} MW).`
+        : `Grid fault detected: load dropped to ${triggered.toFixed(1)} MW (expected ~${baseline.toFixed(1)} MW) — possible transmission fault.`),
+    });
+  });
+  // Fill non-anomalous health index values with a simple nominal band.
+  for (let i = 0; i < history.length; i++) {
+    if (history[i].grid_health_index === 100) {
+      history[i].grid_health_index = 96 + gauss(0, 2);
+      history[i].grid_health_index = Math.min(Math.max(history[i].grid_health_index, 60), 100);
+    }
+  }
+  anomalies.sort((a, b) => b.timestamp - a.timestamp);
+
+  // Forecast: seasonal/weekly profile estimated from the trailing 168h,
+  // projected forward with a widening uncertainty band — same approach as
+  // the backend's QuantileForecaster.
+  function buildForecast() {
+    const lookback = history.slice(-168);
+    const hourlyProfile = {};
+    const hourlyCounts = {};
+    lookback.forEach((p) => {
+      const h = p.timestamp.getHours();
+      hourlyProfile[h] = (hourlyProfile[h] || 0) + p.consumption_mw;
+      hourlyCounts[h] = (hourlyCounts[h] || 0) + 1;
+    });
+    Object.keys(hourlyProfile).forEach((h) => (hourlyProfile[h] /= hourlyCounts[h]));
+
+    const overallMean = lookback.reduce((s, p) => s + p.consumption_mw, 0) / lookback.length;
+    let weekendSum = 0, weekendN = 0, weekdaySum = 0, weekdayN = 0;
+    lookback.forEach((p) => {
+      const isWeekend = p.timestamp.getDay() === 0 || p.timestamp.getDay() === 6;
+      if (isWeekend) { weekendSum += p.consumption_mw; weekendN++; }
+      else { weekdaySum += p.consumption_mw; weekdayN++; }
+    });
+    const weekendOffset = (weekendN ? weekendSum / weekendN : overallMean) - overallMean;
+    const weekdayOffset = (weekdayN ? weekdaySum / weekdayN : overallMean) - overallMean;
+
+    const recent24 = lookback.slice(-24);
+    const recentLevel = recent24.reduce((s, p) => s + p.consumption_mw, 0) / recent24.length;
+    const trendPerHour = (recentLevel - overallMean) / lookback.length;
+
+    const diffs = [];
+    for (let i = 1; i < lookback.length; i++) diffs.push(lookback[i].consumption_mw - lookback[i - 1].consumption_mw);
+    const diffMean = diffs.reduce((s, v) => s + v, 0) / diffs.length;
+    const variance = diffs.reduce((s, v) => s + (v - diffMean) ** 2, 0) / diffs.length;
+    let volatility = Math.sqrt(variance);
+    if (!isFinite(volatility) || volatility <= 0) volatility = Math.max(recentLevel * 0.02, 5);
+
+    const lastTs = history[history.length - 1].timestamp;
+    const points = [];
+    for (let h = 1; h <= HORIZON_HOURS; h++) {
+      const ts = new Date(lastTs.getTime() + h * 3600000);
+      const isWeekend = ts.getDay() === 0 || ts.getDay() === 6;
+      const seasonal = hourlyProfile[ts.getHours()] !== undefined ? hourlyProfile[ts.getHours()] : recentLevel;
+      const dayOffset = isWeekend ? weekendOffset : weekdayOffset;
+      let p50 = seasonal + dayOffset + trendPerHour * h;
+      const bandWidth = volatility * Math.sqrt(h) * 1.15;
+      let p10 = Math.max(p50 - 1.28 * bandWidth, 0);
+      let p90 = p50 + 1.28 * bandWidth;
+      p50 = Math.max(p50, 0);
+      p10 = Math.min(p10, p50);
+      p90 = Math.max(p90, p50);
+      points.push({ timestamp: ts, p10_mw: p10, p50_mw: p50, p90_mw: p90 });
+    }
+    return points;
+  }
+  const forecast = buildForecast();
+
+  // ---------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------
+
+  function fmt(n, digits) {
+    if (n === null || n === undefined || Number.isNaN(n)) return "—";
+    return n.toLocaleString(undefined, { maximumFractionDigits: digits ?? 0, minimumFractionDigits: digits ?? 0 });
+  }
+  function fmtTime(d) {
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  function fmtDateTime(d) {
+    return d.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+
+  function render() {
+    const latest = history[history.length - 1];
+
+    document.getElementById("lastUpdated").textContent = "· " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+    document.getElementById("mLoad").textContent = fmt(latest.consumption_mw);
+    document.getElementById("mLoadBar").style.width = Math.min((latest.consumption_mw / 7000) * 100, 100) + "%";
+    document.getElementById("mTemp").textContent = fmt(latest.temperature_c, 1);
+
+    const health = latest.grid_health_index;
+    document.getElementById("mHealth").textContent = fmt(health, 1);
+    document.getElementById("mHealthBar").style.width = Math.min(Math.max(health, 0), 100) + "%";
+    const healthBar = document.getElementById("mHealthBar");
+    const healthIcon = document.getElementById("mHealthIcon");
+    healthBar.className = "bar-fill";
+    healthIcon.className = "";
+    const healthColor = health >= 90 ? "emerald" : health >= 70 ? "amber" : "rose";
+    healthBar.classList.add("bg-" + healthColor);
+    healthIcon.classList.add(healthColor);
+
+    const criticalCount = anomalies.filter((a) => a.severity === "CRITICAL").length;
+    document.getElementById("mAlerts").textContent = String(anomalies.length);
+    document.getElementById("mAlertsUnit").textContent = criticalCount > 0 ? "CRITICAL" : "nominal";
+    const alertIcon = document.getElementById("mAlertIcon");
+    alertIcon.className = criticalCount > 0 ? "rose" : "emerald";
+
+    // Alert banner
+    const banner = document.getElementById("alertBanner");
+    const critical = anomalies.filter((a) => a.severity === "CRITICAL");
+    if (critical.length > 0) {
+      banner.classList.add("active");
+      document.getElementById("alertText").textContent = critical[0].description;
+      document.getElementById("alertTime").textContent = fmtDateTime(critical[0].timestamp) + (critical.length > 1 ? `  +${critical.length - 1} more active` : "");
+    } else {
+      banner.classList.remove("active");
+    }
+
+    // Anomaly log
+    const logList = document.getElementById("logList");
+    document.getElementById("logCount").textContent = anomalies.length + " recent";
+    if (anomalies.length === 0) {
+      logList.innerHTML = '<div class="empty-state">No anomalies detected in current window.</div>';
+    } else {
+      logList.innerHTML = anomalies.map((a) => {
+        const dotColor = a.severity === "CRITICAL" ? "bg-rose" : a.severity === "MEDIUM" ? "bg-amber" : "bg-emerald";
+        return `<div class="log-row">
+          <span class="log-dot ${dotColor}"></span>
+          <div style="min-width:0;flex:1;">
+            <div class="meta"><span class="log-sev">${a.severity}</span><span class="log-time">${fmtDateTime(a.timestamp)}</span></div>
+            <p class="log-desc">${a.description}</p>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    // Forecast table
+    const tbody = document.getElementById("forecastTableBody");
+    tbody.innerHTML = forecast.map((f) => `
+      <tr>
+        <td>${fmtDateTime(f.timestamp)}</td>
+        <td class="num" style="color:var(--muted2)">${fmt(f.p10_mw)}</td>
+        <td class="num cyan">${fmt(f.p50_mw)}</td>
+        <td class="num" style="color:var(--muted2)">${fmt(f.p90_mw)}</td>
+      </tr>`).join("");
+
+    renderChart();
+  }
+
+  function renderChart() {
+    const svg = document.getElementById("chart");
+    const W = 1000, H = 300, PAD_L = 46, PAD_R = 10, PAD_T = 10, PAD_B = 26;
+    const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+
+    const recentActuals = history.slice(-24);
+    const allTimestamps = [...recentActuals.map((p) => p.timestamp), ...forecast.map((p) => p.timestamp)];
+    const allValues = [
+      ...recentActuals.map((p) => p.consumption_mw),
+      ...forecast.map((p) => p.p10_mw),
+      ...forecast.map((p) => p.p90_mw),
+    ];
+    const minV = Math.min(...allValues) * 0.95;
+    const maxV = Math.max(...allValues) * 1.05;
+    const minT = allTimestamps[0].getTime();
+    const maxT = allTimestamps[allTimestamps.length - 1].getTime();
+
+    const x = (t) => PAD_L + ((t - minT) / (maxT - minT)) * plotW;
+    const y = (v) => PAD_T + plotH - ((v - minV) / (maxV - minV)) * plotH;
+
+    let svgParts = [];
+
+    // grid lines
+    for (let i = 0; i <= 4; i++) {
+      const yy = PAD_T + (plotH / 4) * i;
+      svgParts.push(`<line x1="${PAD_L}" y1="${yy}" x2="${W - PAD_R}" y2="${yy}" stroke="#1c242e" stroke-dasharray="3 6" />`);
+      const val = maxV - ((maxV - minV) / 4) * i;
+      svgParts.push(`<text x="${PAD_L - 8}" y="${yy + 3}" text-anchor="end">${Math.round(val)}</text>`);
+    }
+
+    // x-axis ticks (every 6 points)
+    allTimestamps.forEach((t, i) => {
+      if (i % 6 === 0) {
+        svgParts.push(`<text x="${x(t.getTime())}" y="${H - 6}" text-anchor="middle">${fmtTime(t)}</text>`);
+      }
+    });
+
+    // uncertainty band (p10-p90) over forecast region
+    const bandTop = forecast.map((p) => `${x(p.timestamp.getTime())},${y(p.p90_mw)}`).join(" L ");
+    const bandBottom = forecast.slice().reverse().map((p) => `${x(p.timestamp.getTime())},${y(p.p10_mw)}`).join(" L ");
+    svgParts.push(`<path d="M ${bandTop} L ${bandBottom} Z" fill="rgba(79,214,232,0.15)" stroke="none" />`);
+
+    // actuals line (amber)
+    const actualPath = recentActuals.map((p, i) => `${i === 0 ? "M" : "L"} ${x(p.timestamp.getTime())},${y(p.consumption_mw)}`).join(" ");
+    svgParts.push(`<path d="${actualPath}" fill="none" stroke="#f0a94e" stroke-width="2" />`);
+
+    // p50 line (cyan) — connect last actual to first forecast point for continuity
+    const p50Points = [{ timestamp: recentActuals[recentActuals.length - 1].timestamp, val: recentActuals[recentActuals.length - 1].consumption_mw }]
+      .concat(forecast.map((p) => ({ timestamp: p.timestamp, val: p.p50_mw })));
+    const p50Path = p50Points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(p.timestamp.getTime())},${y(p.val)}`).join(" ");
+    svgParts.push(`<path d="${p50Path}" fill="none" stroke="#4fd6e8" stroke-width="2" />`);
+
+    // p90 faint outline
+    const p90Path = forecast.map((p, i) => `${i === 0 ? "M" : "L"} ${x(p.timestamp.getTime())},${y(p.p90_mw)}`).join(" ");
+    svgParts.push(`<path d="${p90Path}" fill="none" stroke="#4fd6e8" stroke-width="1" stroke-opacity="0.35" />`);
+
+    svg.innerHTML = svgParts.join("");
+  }
+
+  render();
+  // Gentle live feel: re-render the clock + slight jitter every 15s without
+  // needing a backend.
+  setInterval(() => {
+    document.getElementById("lastUpdated").textContent = "· " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }, 15000);
+})();
+</script>
+
+</body>
+</html>
